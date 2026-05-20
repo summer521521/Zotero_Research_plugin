@@ -16,12 +16,34 @@ Use this skill when working with the user's Zotero library through the `zotero` 
 - Prefer read-only exploration unless the user explicitly asks to add, update, tag, create collections, or merge items.
 - Write operations are allowed when requested clearly. For destructive or hard-to-reverse operations, especially duplicate merging, show a dry-run/preview first.
 
-## Installed Zotero Add-ons
+## llm-for-zotero Compatibility
 
-- The user's Zotero desktop has `llm-for-zotero` installed: https://github.com/yilewang/llm-for-zotero.
-- Treat `llm-for-zotero` as a Zotero-side PDF reader and library assistant, separate from the Codex `zotero` MCP server.
-- Do not assume Codex can operate the add-on UI directly through MCP. Use Zotero MCP for library search, metadata, full text, notes, annotations, tags, and collections.
-- If the user refers to the Zotero LLM plugin or Zotero AI assistant, map that to `llm-for-zotero`. Use its outputs only when they are saved into Zotero notes/annotations, file-based notes, or pasted by the user.
+- The user's Zotero desktop may have `llm-for-zotero` installed: https://github.com/yilewang/llm-for-zotero.
+- Treat `llm-for-zotero` as a Zotero-side PDF reader and library assistant. It is not exposed as a Codex marketplace plugin or as the `zotero` MCP server.
+- Treat this personal `zotero-research-tools` plugin as the Codex-facing layer: it exposes the `zotero` MCP server, reads Zotero metadata/full text/notes/annotations/tags/collections, and routes research tasks.
+- Use `llm-for-zotero` output only after it is saved into Zotero notes/annotations, the MinerU Markdown cache, file-based notes, or pasted by the user. Do not assume Codex can operate the add-on UI directly through MCP.
+- Keep data paths distinct:
+  - `ZOTERO_DB_PATH` is only the optional Zotero MCP database path and should point to `zotero.sqlite`.
+  - The MinerU cache belongs under Zotero's data directory as `llm-for-zotero-mineru`, not under `ZOTERO_DB_PATH` and not necessarily under the user's Obsidian folder.
+- Main conflict checks:
+  - If `ZOTERO_DB_PATH` points outside the resolved Zotero data directory, Codex and `llm-for-zotero` may be reading different libraries.
+  - If MinerU cache files are absent, prefer Zotero MCP full text/notes first and do not report stale cache counts.
+  - Do not add a separate marketplace entry for `llm-for-zotero`; this repo should expose only `zotero-research-tools` for Codex-side work.
+- Quick local status entry from this repo root:
+
+```powershell
+.\plugins\zotero-research-tools\scripts\start-zotero-mcp.ps1 -Status
+```
+
+## Official Zotero Plugin Routing
+
+- The user has installed the official Codex Zotero plugin. Treat it as a separate managed plugin, not as code to merge into this personal plugin.
+- If official Zotero app tools are available in the current session, prefer them for broad paper discovery, citation lookup, citation insertion, and simple bibliography workflows.
+- Prefer this personal `zotero-research-tools` plugin for local Zotero MCP operations, local library metadata, notes, annotations, tags, collections, write operations, and any workflow that depends on the user's local Zotero database.
+- Prefer the MinerU `full.md` cache for deep paper reading, evidence extraction, methods/results checking, and figure/table-aware summaries.
+- If both official Zotero and this personal plugin can answer a request, use official Zotero for citation-facing output and this personal plugin for local evidence reading and synthesis.
+- If the user says the official Zotero plugin is installed but its tools are not exposed in the current session, say so clearly and fall back to this personal plugin.
+- Do not combine the official plugin and this plugin into one local bundle. Keep this plugin as a local augmentation and routing layer around Zotero MCP, `llm-for-zotero`, and MinerU output.
 
 ## MinerU Markdown Cache
 
@@ -56,6 +78,12 @@ Use this skill when working with the user's Zotero library through the `zotero` 
    - `zotero_get_annotations`
    - `zotero_get_notes`
 4. When the user references a citation key, use `zotero_search_by_citation_key` before fuzzy search.
+
+## Zotero MCP v0.3 Notes
+
+Recent `zotero-mcp` releases add collection-scoped search, item relationship lookup, note create/update/delete, PDF area annotation support, and local image/PDF attachment support. Use these capabilities only when the exposed MCP tool list in the current Codex session actually includes them; otherwise fall back to metadata/full-text/annotation reads and report the limitation.
+
+For note edits, prefer an explicit preview first and keep item keys or collection keys in the response so changes are traceable.
 
 ## Answering Style
 
