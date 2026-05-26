@@ -1,6 +1,6 @@
 {
   "name": "zotero-research-tools",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "Personal Codex plugin for searching, reading, summarizing, citing, and organizing Zotero library items through Zotero MCP.",
   "author": {
     "name": "summer521521",

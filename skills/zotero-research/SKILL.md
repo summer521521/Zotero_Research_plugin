@@ -12,7 +12,7 @@ Use this skill when working with the user's Zotero library through the `zotero` 
 ## Defaults
 
 - Use local Zotero first. If a database path is needed, read it from `ZOTERO_DB_PATH`; do not assume a hard-coded machine path.
-- Semantic search uses the default local embedding model from `zotero-mcp` (`all-MiniLM-L6-v2`), not Ollama, OpenAI, or Gemini.
+- Semantic search uses the default local embedding model from `zotero-mcp` (`all-MiniLM-L6-v2`) unless the current MCP configuration explicitly exposes OpenAI or Gemini embeddings.
 - Prefer read-only exploration unless the user explicitly asks to add, update, tag, create collections, or merge items.
 - Write operations are allowed when requested clearly. For destructive or hard-to-reverse operations, especially duplicate merging, show a dry-run/preview first.
 
@@ -22,6 +22,7 @@ Use this skill when working with the user's Zotero library through the `zotero` 
 - Treat `llm-for-zotero` as a Zotero-side PDF reader and library assistant. It is not exposed as a Codex marketplace plugin or as the `zotero` MCP server.
 - Treat this personal `zotero-research-tools` plugin as the Codex-facing layer: it exposes the `zotero` MCP server, reads Zotero metadata/full text/notes/annotations/tags/collections, and routes research tasks.
 - Use `llm-for-zotero` output only after it is saved into Zotero notes/annotations, the MinerU Markdown cache, file-based notes, or pasted by the user. Do not assume Codex can operate the add-on UI directly through MCP.
+- As of `llm-for-zotero` v3.8.10, the add-on advertises Codex native compact and Mermaid rendering support. Treat these as Zotero-side UI/output helpers; they do not make the add-on UI directly callable from the `zotero` MCP server.
 - Keep data paths distinct:
   - `ZOTERO_DB_PATH` is only the optional Zotero MCP database path and should point to `zotero.sqlite`.
   - The MinerU cache belongs under Zotero's data directory as `llm-for-zotero-mineru`, not under `ZOTERO_DB_PATH` and not necessarily under the user's Obsidian folder.
@@ -79,9 +80,15 @@ Use this skill when working with the user's Zotero library through the `zotero` 
    - `zotero_get_notes`
 4. When the user references a citation key, use `zotero_search_by_citation_key` before fuzzy search.
 
-## Zotero MCP v0.3 Notes
+## Zotero MCP v0.4.1 Notes
 
-Recent `zotero-mcp` releases add collection-scoped search, item relationship lookup, note create/update/delete, PDF area annotation support, and local image/PDF attachment support. Use these capabilities only when the exposed MCP tool list in the current Codex session actually includes them; otherwise fall back to metadata/full-text/annotation reads and report the limitation.
+Recent `zotero-mcp-server` releases are published on PyPI even when GitHub release pages lag. v0.4.x keeps the `zotero-mcp serve` command, adds a standalone `zotero-cli`, optional install extras (`semantic`, `pdf`, `scite`, `all`), relation tools, Scite citation/retraction tools, configurable transports, and database maintenance commands such as `zotero-mcp update-db` and `zotero-mcp db-status`.
+
+Recent MCP tools may include collection-scoped search, item relationship lookup, note create/update/delete, PDF area annotation support, local image/PDF attachment support, PDF outline extraction, Scite enrichment, and direct relation add/remove. Use these capabilities only when the exposed MCP tool list in the current Codex session actually includes them; otherwise fall back to metadata/full-text/annotation reads and report the limitation.
+
+Current upstream checked: `zotero-mcp-server` v0.4.1. Useful compatibility fixes include local fulltext extraction from `.zotero-ft-cache` and Zotero storage when filenames drift, UTF-8 handling for Windows PDF extraction, annotation text extraction, Better BibTeX citation-key lookup, group-library URL normalization, HTTP/1.1 local API transport for Zotero 7+, and non-PDF fulltext extraction from text-like attachments.
+
+Be careful with write semantics in v0.4.1 and newer: `zotero_update_item.collections` replaces collection membership instead of adding to it. Preview the target collection keys before using it on existing items.
 
 For note edits, prefer an explicit preview first and keep item keys or collection keys in the response so changes are traceable.
 
@@ -100,10 +107,12 @@ Allowed when the user clearly requests them:
 - Add items: `zotero_add_by_doi`, `zotero_add_by_url`, `zotero_add_from_file`
 - Organize items: `zotero_create_collection`, `zotero_manage_collections`, `zotero_batch_update_tags`
 - Edit metadata: `zotero_update_item`
+- Related items: `zotero_add_item_relation`, `zotero_remove_item_relation`
 - Duplicates: run `zotero_find_duplicates` first; only call `zotero_merge_duplicates` after the user confirms the preview.
 
 ## Maintenance
 
 - If semantic search returns no results, check `zotero_get_search_database_status` and consider `zotero_update_search_database`.
+- If shell access is more efficient than MCP schemas, use `zotero-cli` for quick search/get/tag/database checks after confirming it is installed on PATH.
 - If local connection fails, ask the user to open Zotero and enable local API communication in Zotero preferences.
-- If search quality is weak, rebuild the semantic database with full-text indexing before changing embedding providers.
+- If search quality is weak, rebuild the semantic database with full-text indexing (`zotero-mcp update-db --fulltext`, or `--force-rebuild` after changing embedding models) before changing embedding providers.
